@@ -43,8 +43,6 @@ C [0-9]
 {L}{A}* 	            {yylval.str= strdup(yytext); return ID;}
 
 
-"++"	 	return PLUSPLUS; 
-"--"		return MOINSMOINS; 
 "+"		    return PLUS ;
 "-" 		return MOINS;
 "="		    return EQ;

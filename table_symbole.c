@@ -1,7 +1,6 @@
 #define RED  "\x1B[31m"
 #define RESET "\x1B[0m"
 #define BLU   "\x1B[34m"
-#include "table_symbole.h"
 
 int hash(char *nom){
     int i, r;
@@ -29,7 +28,7 @@ table_symbole_variable* insert_table (table_symbole_variable** tab, char *nom, c
     
     precedent = NULL;
 
-    if (chercher (tab, nom) != FALSE){
+    if (find (tab, nom) != FALSE){
         fprintf(stderr, RED "Erreur : " RESET " La variable %s est déjà défini dans la table !\n",nom); 
         return NULL;
     }

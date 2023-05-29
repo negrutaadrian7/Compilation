@@ -1,5 +1,6 @@
-#include "table_symbole.h";
+#include "table_symbole.h"
 #define TAILLE 103
+#define TAILLE_TABLE_FUNCTION 103
 
 typedef struct table_function {
 
@@ -13,6 +14,8 @@ typedef struct table_function {
 void table_function_reset(table_function** table_fun);
 table_function* insert_table_function(table_function** table_fun, char *typeFunction, char *nom_function);
 int find_function(table_function** table_fun, char *nom_fonction);
+table_function* find_function_type(table_function** table_fun, char* typeFunction, char* nom);
+
 void display_function(table_function** table_fun,char *nom_fonction);
 
 

@@ -12,6 +12,7 @@
 #define ALLOUER_MEMOIRE 300
 #define STRING_LENGTH 50
 #define NUMBER_VARIABLE 200
+int auto_incrementor=5000;
 
 extern void yyerror(const char*);
 extern int yylex(void);
@@ -48,7 +49,7 @@ struct variable{
 	char* type;
 };
 
-struct variabe* liste_param_function[NUMBER_VARIABLE];
+struct variable* liste_param_function[NUMBER_VARIABLE];
 
 
 table_symbole_variable* tableSymbole_var[TAILLE_TABLE_VARIABLE];
@@ -68,7 +69,7 @@ void complete_table_variable(table_symbole_variable** tab, char* type){
 	for(int i = 0; i <= NUMBER_VARIABLE; i++){
 		if(strcmp(liste_vars[i], "") != 0){
 			if(insert_table(tab, type, liste_vars[i]) != NULL){
-				display(tab, liste_vars[i]);
+				display_variables(tab, liste_vars[i]);
 			}
 			else{
 				erreur_semantique();
@@ -89,7 +90,7 @@ void add_function(char *nom){
 void add_parametre_function(char* nom, char* type){
 	for(int i = 0; i < NUMBER_VARIABLE; i++){
 		if (liste_param_function[i] == NULL){
-			liste_param_function[i] = (struct variable*) malloc(sizeof(struct variable));//?
+			liste_param_function[i] = (struct variable*) malloc(sizeof(struct variable*));//?
 			liste_param_function[i]->nom = nom;
 			liste_param_function[i]->type = type;
 			break;
@@ -114,7 +115,7 @@ void complete_table_function(table_function** tab, char* nom_function){
 	for(int i = 0; i < NUMBER_VARIABLE; i++){
 		if (liste_param_function[i] != NULL){
 			insert_params(tab, nom_function, liste_param_function[i]->type, liste_param_function[i]->nom);
-			display_function_param(tab, nom_function, liste_param_funtion[i]->nom);
+			display_function_param(tab, nom_function, liste_param_function[i]->nom);
 		}
 	}
 }
@@ -396,11 +397,11 @@ struct treeNode* newnode(int lineNo, char* decorationDot, char* nodeType, char* 
 %left REL
 
 
-%type<ast> arbre programme liste_fonctions fonction liste_instructions instruction expression saut affectation liste_expressions variable binary_op appel condition selection iteration binary_comp binary_rel bloc affectation_for postfix_expression liste_instructions2 
+%type<ast> arbre programme liste_fonctions fonction liste_instructions instruction expression saut affectation liste_expressions variable binary_op appel condition selection iteration binary_comp binary_rel bloc  liste_instructions2 
 %type<str> type liste_declarations declaration liste_declarateurs declarateur liste_parms parm
 
 
-%start programme
+%start arbre
 
 
 
@@ -414,7 +415,7 @@ programme	:
 ;
 liste_declarations	:	
 		liste_declarations declaration 
-	|	
+	|	{/*ignore*/;}
 ;
 liste_fonctions	:	
 		liste_fonctions fonction {$$ = newnode(yylineno, "", "liste_fonctions", "liste_fonctions", none, 2, $1, $2); }
@@ -611,7 +612,7 @@ affectation	:
 
 
 bloc	:	
-		LACCOLADE liste_declarations liste_instructions RACCOLADE{
+		LACCOLADE liste_declarations liste_instructions2 RACCOLADE{
 			$$ = $3;
 		}
 ;

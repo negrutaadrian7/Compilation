@@ -20,7 +20,7 @@ table_function* insert_table_function(table_function** table_fun, char *typeFunc
     table_function *s;
     table_function *precedent;
 
-    if (chercher_function_type(table_fun, typeFunction, nom_function) != NULL){
+    if (find_function_type(table_fun, typeFunction, nom_function) != NULL){
         fprintf(stderr,RED "Erreur " RESET "La fonction %s est déjà défini dans la table !\n", nom_function);
 	    return NULL;
     }
@@ -65,6 +65,19 @@ int find_function(table_function** table_fun, char *nom_fonction){
         element = element->suivant;
     }
     return FALSE;
+}
+
+table_function* find_function_type(table_function** table_fun, char* typeFunction, char* nom){
+    int h = hash_function(nom);
+    table_function* element = table_fun[h];
+
+    while (element != NULL){
+        if (strcmp (element->nom_function, nom) == 0 && strcmp(element->typeFunction, typeFunction) == 0){
+            return element;
+        }
+    }
+    return NULL;
+
 }
 
 void display_function(table_function** table_fun, char *nom_fonction) {
