@@ -379,7 +379,7 @@ struct treeNode* newnode(int lineNo, char* decorationDot, char* nodeType, char* 
 
 %token VOID INT FOR WHILE IF ELSE SWITCH CASE DEFAULT
 %token BREAK RETURN PLUS MOINS MUL DIV LSHIFT RSHIFT BAND BOR LAND LOR LT GT 
-%token GEQ LEQ EQ NEQ NOT EXTERN PVIRG VIRG
+%token GEQ LEQ EQ NEQ NOT EQEQ EXTERN PVIRG VIRG
 %token LCROCHET RCROCHET LACCOLADE RACCOLADE LPAR RPAR TWOP
 %token <str> ID CONSTANTE
 
@@ -421,110 +421,311 @@ liste_fonctions	:
 |               fonction		 {$$ = newnode(yylineno, "", "func", "func", none, 1, $1); }
 ;
 declaration	:	
-		type liste_declarateurs PVIRG
+		type liste_declarateurs PVIRG {
+			complete_table_variable(tableSymbole_var, $1);
+		}
 ;
 liste_declarateurs	:	
 		liste_declarateurs VIRG declarateur
 	|	declarateur
 ;
 declarateur	:	
-		ID
+		ID {$$ = $1; add_variable($1); }
 	|	declarateur LCROCHET CONSTANTE RCROCHET
 ;
+
+
+
+
 fonction	:	
-		type ID LPAR liste_parms RPAR LACCOLADE liste_declarations liste_instructions RACCOLADE
-	|	EXTERN type ID LPAR liste_parms RPAR PVIRG
+		type ID LPAR liste_parms RPAR LACCOLADE liste_declarations liste_instructions RACCOLADE 
+		{
+			if (insert_table_function(tableSymbole_fun, $1, $2) == NULL){
+				erreur_semantique();
+				YYABORT;
+			}
+
+			complete_table_function(tableSymbole_fun, $2);
+
+			if(check_function_declared() == FALSE){
+				fprintf(stderr,RED "Erreur Ligne %d : " RESET "La fonction n'est pas défini ! \n",yylineno);
+			    erreur_semantique();
+			    YYABORT;
+			}
+
+			for (int p = 0; p < NUMBER_VARIABLE; p++){
+				if (liste_param_function[p] != NULL){
+					if (find_param(tableSymbole_fun, liste_param_function[p]->nom) == TRUE && booleanVariableDefined == TRUE){
+						fprintf(stderr,RED "Erreur : " RESET " Ligne %d :  La variable %s est déjà défini dans la fonction %s\n",yylineno,liste_param_function[p]->nom,$2);
+						erreur_semantique();
+						YYABORT;
+						booleanVariableDefined=FALSE;
+						break;
+					}
+					else if(find_param(tableSymbole_fun, liste_param_function[p]->nom) == TRUE && booleanVariableDefined==FALSE){
+						booleanVariableDefined = TRUE;
+					}
+				}
+			}
+
+			if(booleanVariableDefined==FALSE){
+				fprintf(stderr,RED "Erreur : " RESET " Ligne %d : la variable n'est pas défini \n",yylineno);
+				erreur_semantique();
+				YYABORT;
+			}
+
+			vider_liste_params_temporaire();
+			char* string_valueDot= (char*) malloc(ALLOUER_MEMOIRE);
+			sprintf(string_valueDot,"%s, %s",$2,$1); // ID et TYPE
+			
+			$$ = newnode(yylineno,"function","function", "function",string_valueDot, 1,$8);
+		}
+	
+	
+	
+	|EXTERN type ID LPAR liste_parms RPAR PVIRG {
+		if(insert_table_function(tableSymbole_fun,$2,$3)==NULL){
+			erreur_semantique();
+			YYABORT;
+		}
+	}
+
+	| type ID LPAR RPAR LACCOLADE liste_declarations liste_instructions RACCOLADE {
+		add_function($2);
+		if (insert_table_function(tableSymbole_fun, $1, $2) == NULL){
+			erreur_semantique();
+			YYABORT;
+		}
+
+		if(check_function_declared()==FALSE){
+		   	fprintf(stderr,RED "Erreur Ligne %d : " RESET "La fonction n'est pas défini ! \n",yylineno);
+			erreur_semantique();
+		    YYABORT;
+		}
+
+		if(booleanVariableDefined==FALSE){
+			fprintf(stderr,RED "Erreur : " RESET " Ligne %d : la variable n'est pas défini \n",yylineno);
+			erreur_semantique();
+			YYABORT;
+		}
+
+		display_function(tableSymbole_fun, $2);
+		
+		char* string_valueDot = (char*) malloc(ALLOUER_MEMOIRE);
+		sprintf(string_valueDot, "%s, %s", $2, $1);
+
+		$$=newnode(yylineno, "function", "function", "function", string_valueDot, 1, $7);
+	}
 ;
+
+
+
 type	:	
-		VOID
-	|	INT
+		VOID 	{$$ = "void";}
+	|	INT 	{$$ = "int";}
 ;
+
 liste_parms	:	
 		liste_parms VIRG parm
-	|	
+	|	parm
 ;
 parm	:	
-		INT ID
+		INT ID 	{$$ = $2; add_parametre_function($2, "int");}
+		|VOID	{$$ = "";}
 ;
+
+
 liste_instructions :	
-		liste_instructions instruction
-	|
+		liste_instructions instruction {
+			$$=newnode(yylineno,"BLOC","BLOC", "BLOC","BLOC", 2,$1,$2);
+		}
+	
+	|instruction {$$ = $1;}
 ;
+
+liste_instructions2 :	
+		liste_instructions2 instruction {
+			$$=newnode(yylineno,"","BLOC2", "BLOC2","ignore", 2,$1,$2);
+		}
+	|	instruction {$$=$1;}
+;
+
+
 instruction	:	
-		iteration
-	|	selection
-	|	saut
-	|	affectation PVIRG
-	|	bloc
-	|	appel
+	expression PVIRG		{$$ = $1; }
+	|	iteration			{$$ = $1; }
+	|	selection			{$$ = $1; }
+	|	saut				{$$ = $1; }
+	|	affectation PVIRG	{$$ = $1; }
+	|	bloc				{$$ = $1; }
+	|	appel				{$$ = $1; }
 ;
+
+
 iteration	:	
-		FOR LPAR affectation PVIRG condition PVIRG affectation RPAR instruction
-	|	WHILE LPAR condition RPAR instruction
+		FOR LPAR affectation PVIRG condition PVIRG affectation RPAR instruction {
+			$$=newnode(yylineno,"iteration","selection", "selection","FOR", 4,$3,$5,$7,$9);
+		}
+	
+	|	WHILE LPAR condition RPAR instruction {
+			$$=newnode(yylineno,"iteration","selection", "selection","WHILE", 2,$3,$5);
+		}
 ;
+
+
+
 selection	:	
-		IF LPAR condition RPAR instruction %prec THEN
-	|	IF LPAR condition RPAR instruction ELSE instruction
-	|	SWITCH LPAR expression RPAR instruction
-	|	CASE CONSTANTE TWOP instruction
-	|	DEFAULT TWOP instruction
+		IF LPAR condition RPAR instruction %prec THEN {$$=newnode(yylineno,"IF","selection", "selection","IF", 2,$3,$5);}
+	|	IF LPAR condition RPAR instruction ELSE instruction {$$=newnode(yylineno,"IF","selection", "selection","IF", 3,$3,$5,$7);}
+	|	SWITCH LPAR expression RPAR instruction {$$=newnode(yylineno,"SWITCH","selection", "selection","SWITCH", 1,$5);}
+	|	CASE CONSTANTE TWOP instruction {$$=newnode(yylineno,"CASE","selection", "selection","CASE", 1,$4);}
+	|	DEFAULT TWOP instruction {$$=newnode(yylineno,"DEFAULT","selection", "selection","DEFAULT", 1,$3);}
 ;
 saut	:	
-		BREAK PVIRG
-	|	RETURN PVIRG
-	|	RETURN expression PVIRG
+		BREAK PVIRG 			{$$=newnode(yylineno,"BREAK","BREAK", "BREAK","BREAK" ,0);}
+	|	RETURN PVIRG 			{$$=newnode(yylineno,"RETURN","RETURN", "RETURN","RETURN", 0);}
+	|	RETURN expression PVIRG	{$$=newnode(yylineno,"RETURN","RETURN", "RETURN","RETURN",1,$2);}
 ;
+
+
+
 affectation	:	
-		variable '=' expression
+		expression EQ expression PVIRG {
+			
+			for(int i = 0;i<$3->Nchildren;i++){
+			   if(atoi($3->child[i]->valueDot) !=0){
+				if(find(tableSymbole_var,$3->child[i]->valueDot) != FALSE){
+					if(strcmp(find_type(tableSymbole_var,$3->child[i]->valueDot), "int")==0){
+						fprintf(stderr,RED "Erreur : " RESET "La variable %s doit etre un %s ! \n",$3->child[i]->valueDot, find_type(tableSymbole_var,$1->valueDot));
+						erreur_semantique(); 
+						YYABORT;
+					}
+				}
+			    }
+			}
+			$$=newnode(yylineno,"", assign, assign, ":=", 2, $1, $3);	
+		}
 ;
+
+
+
+
 bloc	:	
-		LACCOLADE liste_declarations liste_instructions RACCOLADE
+		LACCOLADE liste_declarations liste_instructions RACCOLADE{
+			$$ = $3;
+		}
 ;
 appel	:	
-		ID LPAR liste_expressions RPAR PVIRG
+		ID LPAR liste_expressions RPAR PVIRG{
+			add_function($1);
+			$$=newnode(yylineno, "appel", "appel", "appel", $1, 1, $3);
+		}
 ;
+
+
 variable	:	
-		ID
-	|	variable LCROCHET expression RCROCHET
+		ID {
+			if (find(tableSymbole_var, $1) == TRUE) {
+				booleanVariableDefined=TRUE;
+			}
+			else {
+				booleanVariableDefined=FALSE;
+			}
+			$$=newnode(yylineno,"variable","variable", $1, $1,0);
+		}
+	|	variable LCROCHET expression RCROCHET{
+			$$=newnode(yylineno,"TAB","TAB", "TAB", "TAB",2,$1,$3);
+		}
 ;
+
+
 expression	:	
-		LPAR expression RPAR
-	|	expression binary_op expression %prec OP
-	|	MOINS expression
-	|	CONSTANTE
-	|	variable
-	|	ID LPAR liste_expressions RPAR
+		LPAR expression RPAR {$$=$2;}
+	|	expression binary_op expression %prec OP {$$=newnode(yylineno,"","expression", "expression",$2->valueDot, 2,$1,$3);}
+	|	MOINS expression {$$=newnode(yylineno,"","expression", "expression","-", 1,$2);}
+	|	CONSTANTE {$$=newnode(yylineno,"","CONSTANTE", $1,$1,0);}
+	|	variable {$$=$1;}
+	|	ID LPAR liste_expressions RPAR {
+			add_function($1);
+			$$=newnode(yylineno,"appel","appel_function", "appel_function",$1,1,$3);
+		}
 ;
+
 liste_expressions	:	
-		liste_expressions VIRG expression
-	|
+		liste_expressions VIRG expression {$$=newnode(yylineno,"","liste_expression", "liste_expression","liste_expressions", 2,$1,$3);}
+	|expression {$$ = $1;}
 ;
 condition	:	
-		NOT LPAR condition RPAR
-	|	condition binary_rel condition %prec REL
-	|	LPAR condition RPAR
-	|	expression binary_comp expression
-;
+		NOT LPAR condition RPAR 					{$$=newnode(yylineno,"","condition", "condition","!", 1,$3);}
+	|	condition binary_rel condition %prec REL 	{$$=newnode(yylineno,"","condition", "condition",$2->valueDot, 2,$1,$3);}
+	|	LPAR condition RPAR							{$$=$2;}
+	|	expression binary_comp expression			{$$=newnode(yylineno,"","expression", "expression",$2->valueDot, 2,$1,$3);}
+;	
 binary_op	:	
-		PLUS
-	|   MOINS
-	|	MUL
-	|	DIV
-	|   LSHIFT
-	|   RSHIFT
-	|	BAND
-	|	BOR
+		PLUS 		{$$=newnode(yylineno,"","binary_op", "plus","+", 0);}
+	|   MOINS 		{$$=newnode(yylineno,"","binary_op", "moins","-", 0);}
+	|	MUL 		{$$=newnode(yylineno,"","binary_op", "fois", "*",0);}
+	|	DIV 		{$$=newnode(yylineno,"","binary_op", "diviser", "/",0);}
+	|   LSHIFT 		{$$=newnode(yylineno,"","binary_op", "LSHIFT","<<", 0);}
+	|   RSHIFT		{$$=newnode(yylineno,"","binary_op", "RSHIFT", ">>",0);}
+	|	BAND 		{$$=newnode(yylineno,"","binary_op", "band", "&",0);}
+	|	BOR 		{$$=newnode(yylineno,"","binary_op", "bor", "|",0);}
 ;
 binary_rel	:	
-		LAND
-	|	LOR
+		LAND 		{$$=newnode(yylineno,"","binary_rel", "LAND","&&", 0);}
+	|	LOR 		{$$=newnode(yylineno,"","binary_rel", "LOR","||", 0);}
 ;
 binary_comp	:	
-		LT
-	|	GT
-	|	GEQ
-	|	LEQ
-	|	EQ
-	|	NEQ
+		LT 			{$$=newnode(yylineno,"","binary_comp", "LT","<", 0);}
+	|	GT 			{$$=newnode(yylineno,"","binary_comp", "GT",">", 0);}
+	|	GEQ 		{$$=newnode(yylineno,"","binary_comp", "GEQ",">=", 0);}
+	|	LEQ 		{$$=newnode(yylineno,"","binary_comp", "LEQ","<=", 0);}
+	|	EQEQ 		{$$=newnode(yylineno,"","binary_comp", "EQEQ","==", 0);}
+	|	NEQ 		{$$=newnode(yylineno,"","binary_comp", "NEQ","!=", 0);}
 ;
 %%
+
+
+int main(int argc, char** argv) {
+	if (argc > 1){
+		FILE *file;
+		file = fopen(argv[1], "r");
+		if (!file){
+			fprintf(stderr, "failed open");
+			exit(1);
+		}
+		yyin = file;
+	}
+
+	int k;
+	table_reset(tableSymbole_var);
+	table_function_reset(tableSymbole_fun);
+	printf("\t------------ TABLE SYMBOLE ------------ \t\n");
+	yyparse();
+        
+        if(strcmp(nom_fichier(argv[1]),"variables.c")==0){
+		genererDot(arbre,argv[1]);
+		printf(BLU "INFORMATION : " RESET "Le code a été généré mais la routine sémantique associé au test ne marche pas !\n");
+	}
+	
+	else{
+		if(ERREUR_SEMANTIQUE==FALSE && ERREUR_SYNTAXE==FALSE){
+			printf(BLU "Génération du code en cours...\n");
+			genererDot(arbre,argv[1]);
+			printf(RESET "Le code a été généré dans votre dossier courant !\n");
+		
+		}else{
+		     printf(BLU "Information :" RESET" Le code ne peut pas être généré  \n");
+		}
+	}
+	return 0; 
+
+}
+
+void yyerror(const char *s)
+{
+	fflush(stdout);
+	fprintf(stderr, "%s \n", s);
+	erreur_syntaxe();
+	
+}
