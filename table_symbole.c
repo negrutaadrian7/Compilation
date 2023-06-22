@@ -13,12 +13,12 @@ int hash(char *nom){
 
 void table_reset (table_symbole_variable** tab){
     for (int i = 0; i < 103; i++){
-        free(tab[i]);
+        tab[i] = NULL;
     }
-    free(tab);
+    tab = NULL;
 }
 
-table_symbole_variable* insert_table (table_symbole_variable** tab, char *nom, char *type){
+table_symbole_variable* insert_table (table_symbole_variable** tab, char* type, char* nom){
     int h;
     table_symbole_variable *s;
     table_symbole_variable *precedent;
@@ -42,6 +42,8 @@ table_symbole_variable* insert_table (table_symbole_variable** tab, char *nom, c
         if (strcmp (s->nom, nom) == 0){
             return NULL;
         }
+        precedent = s;
+        s = s->suivant;
     }
 
     if (precedent == NULL){
@@ -68,6 +70,7 @@ int find(table_symbole_variable** tab, char *nom) {
         if (strcmp(el->nom, nom) == 0){
             return TRUE;
         }
+        el = el->suivant;
     }
     return FALSE;
 }
@@ -76,9 +79,10 @@ char* find_type(table_symbole_variable** tab, char *nom){
     int h = hash(nom);
     table_symbole_variable* el = tab[h];
     while (el != NULL){
-        if (strcmp(el->nom, nom) == 0){
+        if (strcmp(el->nom, nom) == 0 && el->type != NULL){
             return el->type;
         }
+        el = el->suivant;
     }
     return NULL; 
 }
@@ -95,6 +99,7 @@ void display_variables (table_symbole_variable** tab, char *nom){
             printf("Type : %s , ", element->type);
             printf(")\n");
         }
+        element = element->suivant;
     }
 
 }

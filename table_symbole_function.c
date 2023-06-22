@@ -6,12 +6,10 @@
 
 
 void table_function_reset(table_function** tab_fun){
-    table_function* element = NULL;
-    for (int i = 0; i < TAILLE; i++){
-        element = tab_fun[i];
-        table_reset(element->tab_params); // il est pas dynamiquement alloue tab_params;
-        free(element);
+    for (int i = 0; i < TAILLE_TABLE_FUNCTION; i++){
+        tab_fun[i] = NULL;
     }
+    tab_fun = NULL;
 }
 
 table_function* insert_table_function(table_function** table_fun, char *typeFunction, char *nom_function) {
@@ -75,6 +73,7 @@ table_function* find_function_type(table_function** table_fun, char* typeFunctio
         if (strcmp (element->nom_function, nom) == 0 && strcmp(element->typeFunction, typeFunction) == 0){
             return element;
         }
+        element = element->suivant;
     }
     return NULL;
 
@@ -93,13 +92,13 @@ void display_function(table_function** table_fun, char *nom_fonction) {
     }
 }    
 
-void insert_params(table_function** table_fun, char *nom_function, char *param, char *typeParam ) {
+void insert_params(table_function** table_fun, char *nom_function, char* typeParam, char *param ) {
     int h = hash(nom_function);
     table_function* element = table_fun[h];
 
     while (element != NULL){
         if (strcmp (element->nom_function, nom_function) == 0){
-            insert_table(element->tab_params, param, typeParam);
+            insert_table(element->tab_params, typeParam, param);
         }
 
         element = element->suivant;

@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include "table_symbole_function.c"
-#include "miniCfunctions.c"
 
 #define MAXCHILD 100
 #define ALLOUER_MEMOIRE 300
@@ -66,7 +65,7 @@ void add_variable(char *nom){
 }
 
 void complete_table_variable(table_symbole_variable** tab, char* type){
-	for(int i = 0; i <= NUMBER_VARIABLE; i++){
+	for(int i = 0; i < NUMBER_VARIABLE; i++){
 		if(strcmp(liste_vars[i], "") != 0){
 			if(insert_table(tab, type, liste_vars[i]) != NULL){
 				display_variables(tab, liste_vars[i]);
@@ -424,6 +423,7 @@ liste_fonctions	:
 declaration	:	
 		type liste_declarateurs PVIRG {
 			complete_table_variable(tableSymbole_var, $1);
+			vider_liste_variable_temporaire();
 		}
 ;
 liste_declarateurs	:	
@@ -716,7 +716,7 @@ int main(int argc, char** argv) {
 			printf(RESET "Le code a été généré dans votre dossier courant !\n");
 		
 		}else{
-		     printf(BLU "Information :" RESET" Le code ne peut pas être généré  \n");
+		    printf(BLU "Information :" RESET" Le code ne peut pas être généré  \n");
 		}
 	}
 	return 0; 
